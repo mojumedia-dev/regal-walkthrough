@@ -108,42 +108,41 @@
           font-size: 0.7rem;
         }
       }
-      #walk-btn {
+      #joystick {
         position: fixed;
         bottom: max(1.5rem, env(safe-area-inset-bottom));
-        left: 50%;
-        transform: translateX(-50%);
-        width: 76px;
-        height: 76px;
+        left: max(1.5rem, env(safe-area-inset-left));
+        width: 120px;
+        height: 120px;
         border-radius: 50%;
-        background: rgba(0, 0, 0, 0.55);
-        border: 2px solid rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(10px);
+        background: rgba(0, 0, 0, 0.35);
+        border: 2px solid rgba(255, 255, 255, 0.45);
+        backdrop-filter: blur(8px);
         z-index: 5;
         display: none;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        font-size: 0.7rem;
-        font-weight: 700;
-        letter-spacing: 0.15em;
-        text-transform: uppercase;
+        touch-action: none;
         user-select: none;
         -webkit-user-select: none;
-        touch-action: none;
-        transition: transform 0.08s ease, background 0.12s ease;
       }
-      #walk-btn.visible {
-        display: flex;
+      #joystick.visible {
+        display: block;
       }
-      #walk-btn.active {
-        background: rgba(212, 175, 122, 0.85);
-        transform: translateX(-50%) scale(0.95);
+      #joystick-knob {
+        position: absolute;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.85);
+        border: 2px solid rgba(255, 255, 255, 0.9);
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        transition: transform 0.12s ease;
+        pointer-events: none;
       }
-      #walk-btn svg {
-        width: 32px;
-        height: 32px;
-        margin-bottom: 2px;
+      #joystick.active #joystick-knob {
+        transition: none;
       }
     </style>
   </head>
@@ -159,12 +158,9 @@
       </div>
     </div>
     <div id="hint"></div>
-    <button id="walk-btn" aria-label="Walk forward">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polyline points="12 4 12 20"></polyline>
-        <polyline points="6 10 12 4 18 10"></polyline>
-      </svg>
-    </button>
+    <div id="joystick" aria-label="Walk joystick">
+      <div id="joystick-knob"></div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

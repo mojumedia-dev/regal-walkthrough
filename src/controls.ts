@@ -1,11 +1,13 @@
 import * as pc from "playcanvas";
 
 const MOVE_SPEED = 2.5;        // m/s
-const RUN_MULT = 2.2;          // hold Shift on desktop
-const LOOK_SENS = 0.12;        // deg per CSS pixel
+const RUN_MULT = 2.2;
+const LOOK_SENS = 0.12;
 const TOUCH_LOOK_SENS = 0.18;
 const PINCH_FOV_MIN = 30;
 const PINCH_FOV_MAX = 90;
+const JOY_RADIUS = 44;          // px the knob can travel from center
+const JOY_DEADZONE = 0.12;      // ignore tiny drift
 
 export function isTouchDevice(): boolean {
   return (
@@ -23,8 +25,9 @@ export function setupControls(
   const pitch = { v: 0 };
   const keys = new Set<string>();
   let running = false;
-  // Mobile "hold to walk" button state (also drives desktop W behavior is via keys)
-  let walking = false;
+
+  // Joystick output: -1..1 for both axes. y is forward (negative = forward).
+  const joy = { x: 0, y: 0 };
 
   app.on("update", (dt: number) => {
     pitch.v = Math.max(-85, Math.min(85, pitch.v));
@@ -36,31 +39,34 @@ export function setupControls(
     let dx = 0;
     let dz = 0;
     let dy = 0;
-    if (keys.has("w") || walking) dz -= 1;
+    if (keys.has("w")) dz -= 1;
     if (keys.has("s")) dz += 1;
     if (keys.has("a")) dx -= 1;
     if (keys.has("d")) dx += 1;
     if (keys.has(" ")) dy += 1;
-    if (keys.has("shift") && (dx || dz || dy)) {/* run handled below */}
+
+    // Joystick adds onto keyboard (in case both used in dev)
+    dx += joy.x;
+    dz += joy.y; // joy.y already negative for forward
 
     const len = Math.hypot(dx, dz);
     if (len > 0 || dy !== 0) {
-      if (len > 0) {
-        dx /= len;
-        dz /= len;
-      }
+      // Clamp magnitude so combined keys+joystick don't exceed full speed
+      const mag = Math.min(1, len);
+      const ux = len > 0 ? (dx / len) * mag : 0;
+      const uz = len > 0 ? (dz / len) * mag : 0;
       const speed = MOVE_SPEED * (running ? RUN_MULT : 1) * dt;
-      const pos = camera.getLocalPosition();
-      // Walk button glides along the camera's gaze (so you walk where you look,
-      // including up/down stairs). Strafe stays purely horizontal.
+
       const forwardX = -Math.sin(yawRad) * Math.cos(pitchRad);
       const forwardY = -Math.sin(pitchRad);
       const forwardZ = -Math.cos(yawRad) * Math.cos(pitchRad);
       const rightX = Math.cos(yawRad);
       const rightZ = -Math.sin(yawRad);
-      pos.x += (forwardX * -dz + rightX * dx) * speed;
-      pos.y += forwardY * -dz * speed + dy * speed;
-      pos.z += (forwardZ * -dz + rightZ * dx) * speed;
+
+      const pos = camera.getLocalPosition();
+      pos.x += (forwardX * -uz + rightX * ux) * speed;
+      pos.y += forwardY * -uz * speed + dy * speed;
+      pos.z += (forwardZ * -uz + rightZ * ux) * speed;
       camera.setLocalPosition(pos);
     }
   });
@@ -85,33 +91,10 @@ export function setupControls(
   }
 
   // ---- Touch ----
-  // Show the on-screen Walk button only on touch devices.
-  const walkBtn = document.getElementById("walk-btn") as HTMLButtonElement | null;
-  if (walkBtn) {
-    walkBtn.classList.add("visible");
-    const press = (e: Event) => {
-      walking = true;
-      walkBtn.classList.add("active");
-      e.preventDefault();
-      e.stopPropagation();
-    };
-    const release = (e: Event) => {
-      walking = false;
-      walkBtn.classList.remove("active");
-      e.preventDefault();
-      e.stopPropagation();
-    };
-    walkBtn.addEventListener("touchstart", press, { passive: false });
-    walkBtn.addEventListener("touchend", release, { passive: false });
-    walkBtn.addEventListener("touchcancel", release, { passive: false });
-    // Also support mouse for emulators / desktop touch testing
-    walkBtn.addEventListener("mousedown", press);
-    walkBtn.addEventListener("mouseup", release);
-    walkBtn.addEventListener("mouseleave", release);
-  }
+  setupJoystick(joy);
 
-  // Drag-to-look + two-finger pinch FOV. We track touches that originate on
-  // the canvas only; touches starting on the walk button are handled above.
+  // Drag-to-look + two-finger pinch FOV. Touches that start on the joystick
+  // are intercepted there and never reach this canvas listener.
   let lastX = 0;
   let lastY = 0;
   let lookFingerId = -1;
@@ -183,6 +166,95 @@ export function setupControls(
       lastY = e.touches[0].clientY;
     }
   });
+}
+
+function setupJoystick(joy: { x: number; y: number }) {
+  const root = document.getElementById("joystick") as HTMLDivElement | null;
+  const knob = document.getElementById("joystick-knob") as HTMLDivElement | null;
+  if (!root || !knob) return;
+  root.classList.add("visible");
+
+  let activeId = -1;
+
+  const setKnob = (kx: number, ky: number) => {
+    knob.style.transform = `translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
+  };
+  const reset = () => {
+    activeId = -1;
+    joy.x = 0;
+    joy.y = 0;
+    root.classList.remove("active");
+    setKnob(0, 0);
+  };
+
+  root.addEventListener(
+    "touchstart",
+    (e) => {
+      if (activeId !== -1) return;
+      const t = e.changedTouches[0];
+      activeId = t.identifier;
+      root.classList.add("active");
+      updateFromTouch(t.clientX, t.clientY);
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    { passive: false },
+  );
+
+  root.addEventListener(
+    "touchmove",
+    (e) => {
+      const t = findChangedTouch(e.changedTouches, activeId);
+      if (!t) return;
+      updateFromTouch(t.clientX, t.clientY);
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    { passive: false },
+  );
+
+  const onEnd = (e: TouchEvent) => {
+    const ended = findChangedTouch(e.changedTouches, activeId);
+    if (!ended) return;
+    reset();
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  root.addEventListener("touchend", onEnd, { passive: false });
+  root.addEventListener("touchcancel", onEnd, { passive: false });
+
+  function updateFromTouch(clientX: number, clientY: number) {
+    const rect = root!.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    let dx = clientX - cx;
+    let dy = clientY - cy;
+    const dist = Math.hypot(dx, dy);
+    if (dist > JOY_RADIUS) {
+      const k = JOY_RADIUS / dist;
+      dx *= k;
+      dy *= k;
+    }
+    setKnob(dx, dy);
+    // Convert to -1..1
+    let nx = dx / JOY_RADIUS;
+    let ny = dy / JOY_RADIUS;
+    // Apply deadzone for low drift
+    const m = Math.hypot(nx, ny);
+    if (m < JOY_DEADZONE) {
+      nx = 0;
+      ny = 0;
+    }
+    joy.x = nx;
+    joy.y = ny;
+  }
+}
+
+function findChangedTouch(list: TouchList, id: number): Touch | null {
+  for (let i = 0; i < list.length; i++) {
+    if (list.item(i)?.identifier === id) return list.item(i);
+  }
+  return null;
 }
 
 function findTouch(list: TouchList, id: number): Touch | null {

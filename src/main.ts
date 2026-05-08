@@ -64,7 +64,7 @@ async function bootstrap() {
 
   statusEl.textContent = "Loading walkthrough…";
   hintEl.textContent = isTouchDevice()
-    ? "Drag to look · hold ↑ to walk · pinch to zoom"
+    ? "Joystick to walk · drag to look · pinch to zoom"
     : "Click to lock · WASD to move · drag to look";
 
   const splatAsset = new pc.Asset("splat", "gsplat", { url: SPLAT_URL });

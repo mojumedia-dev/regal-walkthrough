@@ -88,37 +88,14 @@ async function startPreview() {
     await page.reload({ waitUntil: "domcontentloaded" });
     await new Promise((r) => setTimeout(r, WAIT_MS));
 
-    const walkBtnVisible = await page.evaluate(() => {
-      const b = document.getElementById("walk-btn");
-      return b ? b.classList.contains("visible") : false;
+    const joyVisible = await page.evaluate(() => {
+      const j = document.getElementById("joystick");
+      return j ? j.classList.contains("visible") : false;
     });
-    console.log("  walk button visible on mobile:", walkBtnVisible);
+    console.log("  joystick visible on mobile:", joyVisible);
 
-    if (walkBtnVisible) {
-      // Capture starting camera Z, dispatch a touchstart on walk button via
-      // CDP, wait, capture again. We expose camera in main.ts via window.__camera
-      // for testing; if not present, we just check classList toggling.
-      const before = await page.evaluate(() => {
-        const wb = document.getElementById("walk-btn");
-        wb?.dispatchEvent(new TouchEvent("touchstart", { bubbles: true, cancelable: true }));
-        return wb?.classList.contains("active") ?? false;
-      });
-      console.log("  walk button .active after press:", before);
-
-      await new Promise((r) => setTimeout(r, 600));
-
-      const released = await page.evaluate(() => {
-        const wb = document.getElementById("walk-btn");
-        wb?.dispatchEvent(new TouchEvent("touchend", { bubbles: true, cancelable: true }));
-        return wb?.classList.contains("active") === false;
-      });
-      console.log("  walk button .active off after release:", released);
-
-      if (!before || !released) {
-        errors.push("[touch] walk button press/release didn't toggle .active");
-      }
-    } else {
-      errors.push("[touch] walk button never became visible on mobile viewport");
+    if (!joyVisible) {
+      errors.push("[touch] joystick never became visible on mobile viewport");
     }
 
     console.log("\n=== Console output ===");
