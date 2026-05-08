@@ -24,9 +24,11 @@ const app = new pc.Application(canvas, {
   },
 });
 
-// Gaussian Splat support is opt-in: pc.Application doesn't auto-register the
-// system or resource handler, so we wire them by hand.
-app.systems.add(new pc.GSplatComponentSystem(app));
+// Gaussian Splat support is opt-in. Constructing the component system
+// self-registers it with the app, so don't wrap in app.systems.add — that
+// throws "already registered". The resource handler still needs explicit
+// addHandler.
+new pc.GSplatComponentSystem(app);
 app.loader.addHandler("gsplat", new pc.GSplatHandler(app));
 
 app.setCanvasResolution(pc.RESOLUTION_AUTO);
