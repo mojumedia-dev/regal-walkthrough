@@ -6,7 +6,10 @@ import { setupControls, isTouchDevice } from "./controls";
 // into public/splats/ and pointing the env var there (e.g. "/splats/regal-home.compressed.ply").
 const DEFAULT_SPLAT_URL =
   "https://raw.githubusercontent.com/playcanvas/engine/main/examples/assets/splats/guitar.compressed.ply";
-const SPLAT_URL = import.meta.env.VITE_SPLAT_URL ?? DEFAULT_SPLAT_URL;
+// Use ||, NOT ??, so an empty-string env var (e.g. CI passing through an
+// unset variable) still falls back to the default. With ?? we shipped an
+// empty URL to production and the gsplat handler crashed on `url.original`.
+const SPLAT_URL = import.meta.env.VITE_SPLAT_URL || DEFAULT_SPLAT_URL;
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const loadingEl = document.getElementById("loading")!;

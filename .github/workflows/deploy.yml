@@ -24,10 +24,13 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - name: Build
+        run: npm run build
         env:
-          # Override at workflow level (Repo Settings → Secrets/Variables → Actions)
-          # to point at a hosted .splat URL without editing code.
+          # Override at workflow level (Repo Settings → Secrets/Variables → Actions
+          # → Variables → VITE_SPLAT_URL) to point at a hosted .splat URL without
+          # editing code. Empty string here is fine: src/main.ts falls back to
+          # the default when this is empty.
           VITE_SPLAT_URL: ${{ vars.VITE_SPLAT_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
