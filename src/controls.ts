@@ -21,46 +21,53 @@ export function setupControls(
 ): void {
   const yaw = { v: 0 };
   const pitch = { v: 0 };
-  const move = { x: 0, y: 0, z: 0 };
   const keys = new Set<string>();
   let running = false;
+  // Mobile "hold to walk" button state (also drives desktop W behavior is via keys)
+  let walking = false;
 
-  // Apply rotation each frame
   app.on("update", (dt: number) => {
     pitch.v = Math.max(-85, Math.min(85, pitch.v));
     camera.setLocalEulerAngles(pitch.v, yaw.v, 0);
 
-    // Translate movement into camera-local space (ignoring pitch so WASD doesn't fly)
-    const forward = new pc.Vec3(0, 0, -1);
-    const right = new pc.Vec3(1, 0, 0);
     const yawRad = (yaw.v * Math.PI) / 180;
-    forward.set(-Math.sin(yawRad), 0, -Math.cos(yawRad));
-    right.set(Math.cos(yawRad), 0, -Math.sin(yawRad));
+    const pitchRad = (pitch.v * Math.PI) / 180;
 
     let dx = 0;
     let dz = 0;
-    if (keys.has("w") || move.z < 0) dz -= 1;
-    if (keys.has("s") || move.z > 0) dz += 1;
-    if (keys.has("a") || move.x < 0) dx -= 1;
-    if (keys.has("d") || move.x > 0) dx += 1;
+    let dy = 0;
+    if (keys.has("w") || walking) dz -= 1;
+    if (keys.has("s")) dz += 1;
+    if (keys.has("a")) dx -= 1;
+    if (keys.has("d")) dx += 1;
+    if (keys.has(" ")) dy += 1;
+    if (keys.has("shift") && (dx || dz || dy)) {/* run handled below */}
 
     const len = Math.hypot(dx, dz);
-    if (len > 0) {
-      dx /= len;
-      dz /= len;
+    if (len > 0 || dy !== 0) {
+      if (len > 0) {
+        dx /= len;
+        dz /= len;
+      }
       const speed = MOVE_SPEED * (running ? RUN_MULT : 1) * dt;
       const pos = camera.getLocalPosition();
-      pos.x += (forward.x * -dz + right.x * dx) * speed;
-      pos.z += (forward.z * -dz + right.z * dx) * speed;
+      // Walk button glides along the camera's gaze (so you walk where you look,
+      // including up/down stairs). Strafe stays purely horizontal.
+      const forwardX = -Math.sin(yawRad) * Math.cos(pitchRad);
+      const forwardY = -Math.sin(pitchRad);
+      const forwardZ = -Math.cos(yawRad) * Math.cos(pitchRad);
+      const rightX = Math.cos(yawRad);
+      const rightZ = -Math.sin(yawRad);
+      pos.x += (forwardX * -dz + rightX * dx) * speed;
+      pos.y += forwardY * -dz * speed + dy * speed;
+      pos.z += (forwardZ * -dz + rightZ * dx) * speed;
       camera.setLocalPosition(pos);
     }
   });
 
   // ---- Desktop ----
   if (!isTouchDevice()) {
-    canvas.addEventListener("click", () => {
-      canvas.requestPointerLock?.();
-    });
+    canvas.addEventListener("click", () => canvas.requestPointerLock?.());
     document.addEventListener("mousemove", (e) => {
       if (document.pointerLockElement !== canvas) return;
       yaw.v -= e.movementX * LOOK_SENS;
@@ -78,8 +85,33 @@ export function setupControls(
   }
 
   // ---- Touch ----
-  // One finger = look, two fingers = pinch zoom (camera fov), three fingers = move forward.
-  // For an MVP we keep it to one-finger drag look + a virtual joystick.
+  // Show the on-screen Walk button only on touch devices.
+  const walkBtn = document.getElementById("walk-btn") as HTMLButtonElement | null;
+  if (walkBtn) {
+    walkBtn.classList.add("visible");
+    const press = (e: Event) => {
+      walking = true;
+      walkBtn.classList.add("active");
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    const release = (e: Event) => {
+      walking = false;
+      walkBtn.classList.remove("active");
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    walkBtn.addEventListener("touchstart", press, { passive: false });
+    walkBtn.addEventListener("touchend", release, { passive: false });
+    walkBtn.addEventListener("touchcancel", release, { passive: false });
+    // Also support mouse for emulators / desktop touch testing
+    walkBtn.addEventListener("mousedown", press);
+    walkBtn.addEventListener("mouseup", release);
+    walkBtn.addEventListener("mouseleave", release);
+  }
+
+  // Drag-to-look + two-finger pinch FOV. We track touches that originate on
+  // the canvas only; touches starting on the walk button are handled above.
   let lastX = 0;
   let lastY = 0;
   let lookFingerId = -1;
@@ -150,20 +182,6 @@ export function setupControls(
       lastX = e.touches[0].clientX;
       lastY = e.touches[0].clientY;
     }
-  });
-
-  // Simple double-tap to step forward (since we don't have a joystick yet)
-  let lastTap = 0;
-  canvas.addEventListener("touchend", (e) => {
-    const now = performance.now();
-    if (now - lastTap < 300 && e.changedTouches.length === 1) {
-      const yawRad = (yaw.v * Math.PI) / 180;
-      const pos = camera.getLocalPosition();
-      pos.x += -Math.sin(yawRad) * 1.5;
-      pos.z += -Math.cos(yawRad) * 1.5;
-      camera.setLocalPosition(pos);
-    }
-    lastTap = now;
   });
 }
 

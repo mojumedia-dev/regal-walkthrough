@@ -90,7 +90,7 @@
       }
       #hint {
         position: fixed;
-        bottom: max(1rem, env(safe-area-inset-bottom));
+        top: max(1rem, env(safe-area-inset-top));
         left: 50%;
         transform: translateX(-50%);
         font-size: 0.75rem;
@@ -108,6 +108,43 @@
           font-size: 0.7rem;
         }
       }
+      #walk-btn {
+        position: fixed;
+        bottom: max(1.5rem, env(safe-area-inset-bottom));
+        left: 50%;
+        transform: translateX(-50%);
+        width: 76px;
+        height: 76px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.55);
+        border: 2px solid rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        z-index: 5;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+        transition: transform 0.08s ease, background 0.12s ease;
+      }
+      #walk-btn.visible {
+        display: flex;
+      }
+      #walk-btn.active {
+        background: rgba(212, 175, 122, 0.85);
+        transform: translateX(-50%) scale(0.95);
+      }
+      #walk-btn svg {
+        width: 32px;
+        height: 32px;
+        margin-bottom: 2px;
+      }
     </style>
   </head>
   <body>
@@ -122,6 +159,12 @@
       </div>
     </div>
     <div id="hint"></div>
+    <button id="walk-btn" aria-label="Walk forward">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="12 4 12 20"></polyline>
+        <polyline points="6 10 12 4 18 10"></polyline>
+      </svg>
+    </button>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
