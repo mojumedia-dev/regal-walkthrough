@@ -84,6 +84,12 @@ async function bootstrap() {
     }
     const splat = new pc.Entity("splat");
     splat.addComponent("gsplat", { asset: splatAsset, unified: true });
+    // Splats arrive in whatever orientation the capture pipeline produced;
+    // for the default sample (PlayCanvas's guitar) that's upside-down vs.
+    // gravity. Flip 180° around X so the world is upright. When you swap
+    // in a Polycam capture this likely needs adjusting per-scene — easiest
+    // is to drive it from a query string later (?rx=180&ry=0).
+    splat.setLocalEulerAngles(180, 0, 0);
     app.root.addChild(splat);
     fillEl.style.width = "100%";
     requestAnimationFrame(() => loadingEl.classList.add("hidden"));
