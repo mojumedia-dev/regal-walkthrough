@@ -5,7 +5,7 @@ import { setupControls, isTouchDevice } from "./controls";
 // at build time (Repo Settings → Variables → VITE_SPLAT_URL), or by dropping a file
 // into public/splats/ and pointing the env var there (e.g. "/splats/regal-home.compressed.ply").
 const DEFAULT_SPLAT_URL =
-  "https://raw.githubusercontent.com/playcanvas/engine/main/examples/assets/splats/guitar/meta.json";
+  "https://raw.githubusercontent.com/playcanvas/engine/main/examples/assets/splats/guitar.compressed.ply";
 const SPLAT_URL = import.meta.env.VITE_SPLAT_URL ?? DEFAULT_SPLAT_URL;
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
