@@ -1,0 +1,6 @@
+Drop your .compressed.ply / .splat / .ply file here, then either:
+
+1. Set VITE_SPLAT_URL=/splats/your-file.compressed.ply when building, or
+2. Edit the DEFAULT_SPLAT_URL in src/main.ts.
+
+Polycam → Export → Gaussian Splat → .ply (compressed) is the recommended format.
